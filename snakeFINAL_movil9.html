@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snake Game – Raquel</title>
+  <style>
+  body{text-align:center; font-family:Arial,sans-serif; background:linear-gradient(180deg,#f1f5f9,#e2e8f0); color:#0f172a;}
+  h1{text-align: center;}
+  /*h2, h3, p{text-align: center;}*/
+  .title{display:flex; content:center; gap:20px; margin-bottom:10px; font-weight:bold;}
+  .container{display:flex; content:left; gap:20px; margin-bottom:10px; font-weight:bold;}
+  .info{display:flex; justify-content:center; gap:20px; margin-bottom:10px; font-weight:bold;}
+  button{margin-top:6px; padding:6px 14px; border:none; border-radius:6px; background:#22c55e; font-weight:bold; cursor:pointer;}
+  canvas{background:#f8fafc; border:4px solid #22c55e; border-radius:10px; display:block; margin:12px auto;}
+  canvas{max-width: 95vw; max-height: 95vw;}
+
+  details{max-width: 800px;margin: 20px auto;padding: 12px 16px;border-radius: 10px;background: #f8fafc;border: 2px solid #22c55e;}
+  summary{font-size: 1.2rem;font-weight: bold;cursor: pointer;list-style: none;}
+  summary::-webkit-details-marker{display: none;}
+  summary::after{content: "➕ info";}
+  /*details[open] summary::before{content: "➖ info";}*/
+
+  
+.controls{display: none;margin-top: 10px;}
+
+.controls button{font-size: 24px;padding: 12px 16px;margin: 4px;border-radius: 10px;border: none;background: #22c55e;}
+/* Solo mostrar en móviles */
+@media (max-width: 768px) {.controls{display: block;}}
+
+  </style>
+</head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<body>
+<h1>🐍 El Juego de la Serpiente 🐍</h1>
+<div class="info"><p> Controla la serpiente y ayúdala a comer tantas frutas como puedas sin chocar.</p></div>
+<div class="container"></div>
+<details>
+<summary><h2>🤔 ¿Cómo jugar?</h2></summary>
+<h3>🎮 Controles</h3>
+<p>Usa las flechas del teclado ⬆️⬇️⬅️➡️ para moverte.</p>
+<p>La serpiente se mueve continuamente en la dirección elegida.</p>
+<h3>🎯 Objetivo</h3>
+<p>Come frutas normales 🍎🍉🍓🍇🍐🍍🍊 para ganar puntos.</p>
+<p>A veces aparece una fruta especial 🍌 que da más puntos.</p>
+<p>Cada fruta hace que la serpiente crezca.</p>
+<h3>‼️ Cuidado</h3>
+<p>Evita chocar con los muros y los bordes, teniendo en cuenta que los muros son aleatorios y cambian cada 15 segundos.</p>
+<p>Las bombas 💣 restan puntos si las tocas.</p>
+<p>Cada vez que subes de nivel, la serpiente va más rápido y aparecen más muros.</p>
+<h3>🔄 Reiniciar</h3>
+<p>Si pierdes, se reinicia automáticamente el juego, o puedes pulsar <strong>Reiniciar</strong> para empezar otra partida.</p>
+</details>
+</div>
+
+<div class="info">
+  <div id="score">Puntuación: 0</div>
+  <div id="level">Nivel: 1</div>
+</div>
+<p id="gameMessage" style="font-weight:bold; color:#d00808;"></p>
+<button onclick="resetGame()">Reiniciar</button>
+<canvas id="game" width="400" height="400"></canvas>
+
+<div class="controls">
+  <button onclick="setDirection(0, -1)">⬆️</button>
+  <div>
+    <button onclick="setDirection(-1, 0)">⬅️</button>
+    <button onclick="setDirection(1, 0)">➡️</button>
+  </div>
+  <button onclick="setDirection(0, 1)">⬇️</button>
+</div>
+
+
+<script>
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const size = 20;
+  const tiles = canvas.width / size;
+
+  const fruits = ["🍎","🍉","🍓","🍇","🍐","🍍","🍊"];
+  const specialFruit = "🍌";
+  const bombEmoji = "💣";
+
+  let snake, food, bomb, walls, dx, dy, running;
+  let score, level, speed, interval, tick, wallTimer;
+
+  function init() {
+    clearMessage();
+    snake = [{ x: 10, y: 10 }];
+    dx = dy = 0;
+    running = false;
+    score = 0;
+    level = 1;
+    speed = 150;
+    tick = 0;
+
+    walls = generateWalls(1);
+    food = randomFood(false);
+    bomb = null;
+
+    updateUI();
+
+    clearInterval(interval);
+    clearInterval(wallTimer);
+
+    interval = setInterval(loop, speed);
+
+    // ✅ regenerar muros cada 15 segundos
+    wallTimer = setInterval(() => {
+      //walls = generateWalls(1 + level * 2);
+      walls = generateWalls(1 + level)
+    }, 15000);
+
+    draw();
+  }
+
+  
+  function setDirection(x, y) {
+    if (dx === -x && dy === -y) return; // evita girar 180°
+    dx = x;
+    dy = y;
+    running = true;
+  }
+
+
+  function updateUI() {
+    document.getElementById("score").textContent = "Puntuación: " + score;
+    document.getElementById("level").textContent = "Nivel: " + level;
+  }
+
+  function resetGame() { init(); }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; running = true; }
+    if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; running = true; }
+    if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; running = true; }
+    if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; running = true; }
+  });
+
+  function generateWalls(amount) {
+    const w = [];
+    while (w.length < amount) {
+      const pos = { x: Math.floor(Math.random()*tiles), y: Math.floor(Math.random()*tiles) };
+      if (snake.some?.(s=>s.x===pos.x&&s.y===pos.y)) continue;
+      if (!w.some(a=>a.x===pos.x&&a.y===pos.y)) w.push(pos);
+    }
+    return w;
+  }
+
+  function randomFood(special) {
+    let pos;
+    do {
+      pos = { x: Math.floor(Math.random()*tiles), y: Math.floor(Math.random()*tiles), emoji: special?specialFruit:fruits[Math.floor(Math.random()*fruits.length)], special };
+    } while (snake.some(s=>s.x===pos.x&&s.y===pos.y)||walls.some(w=>w.x===pos.x&&w.y===pos.y));
+    return pos;
+  }
+
+  function randomBomb() {
+    let pos;
+    do {
+      pos = { x: Math.floor(Math.random()*tiles), y: Math.floor(Math.random()*tiles) };
+    } while (snake.some(s=>s.x===pos.x&&s.y===pos.y)||walls.some(w=>w.x===pos.x&&w.y===pos.y));
+    return pos;
+  }
+
+  function showMessage(text) {
+  const msg = document.getElementById("gameMessage");
+  msg.textContent = text;
+  }
+
+  function clearMessage() {
+    document.getElementById("gameMessage").textContent = "";
+  }
+  
+  function loop() {
+    tick++;
+    if (!running) return draw();
+
+    const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+    if (head.x<0||head.y<0||head.x>=tiles||head.y>=tiles||snake.some(s=>s.x===head.x&&s.y===head.y)||walls.some(w=>w.x===head.x&&w.y===head.y)) {
+      running = false;
+      //alert("¡Oh, chocaste! Juego terminado 😔"); running=false; return;
+      showMessage("¡Oh, chocaste 💥! Juego terminado 😔. Se reiniciará automáticamente en 3, 2, 1... o, si no puedes esperar, toca el botón 'Reiniciar'");
+
+      setTimeout(() => {
+        clearMessage();
+       init(); //reinicia automáticamente
+      },3000);
+      return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x===food.x && head.y===food.y) {
+      score += food.special?30:10;
+      if (score % 50 === 0) levelUp();
+      food = randomFood(Math.random()<0.2);
+    } else snake.pop();
+
+    if (bomb && head.x===bomb.x && head.y===bomb.y) { score = Math.max(0,score-5); bomb=null; }
+    if (!bomb && tick % 40 === 0) bomb = randomBomb();
+
+    updateUI();
+    draw();
+  }
+
+  function levelUp() {
+    level++;
+    speed = Math.max(60,speed-15);
+    //walls = generateWalls(6 + level*2);
+    walls = generateWalls(1 + level)
+    clearInterval(interval);
+    interval = setInterval(loop, speed);
+  }
+
+  function drawSegment(x,y,color,r=8){ ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x*size+size/2,y*size+size/2,r,0,Math.PI*2); ctx.fill(); }
+
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    ctx.fillStyle="#475569";
+    walls.forEach(w=>ctx.fillRect(w.x*size,w.y*size,size,size));
+
+    ctx.font="18px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(food.emoji, food.x*size+size/2, food.y*size+size/2);
+    if (bomb) ctx.fillText(bombEmoji,bomb.x*size+size/2,bomb.y*size+size/2);
+
+    snake.forEach((s,i)=>drawSegment(s.x,s.y,i===0?"#15803d":"#22c55e",i===0?9:8));
+
+    const h = snake[0];
+    if (h){ ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(h.x*size+5,h.y*size+6,2.5,0,Math.PI*2); ctx.arc(h.x*size+11,h.y*size+6,2.5,0,Math.PI*2); ctx.fill(); ctx.fillStyle="black"; ctx.beginPath(); ctx.arc(h.x*size+5+dx,h.y*size+6+dy,1.2,0,Math.PI*2); ctx.arc(h.x*size+11+dx,h.y*size+6+dy,1.2,0,Math.PI*2); ctx.fill(); }
+  }
+
+  init();
+</script>
+
+</body>
+</html>
