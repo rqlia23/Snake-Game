@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Juego de la serpiente</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at top, #1f2937, #020617);
+      color: #e5e7eb;
+    }
+    canvas {
+      background: linear-gradient(145deg, #0f172a, #020617);
+      border: 4px solid #22c55e;
+      border-radius: 12px;
+      display: block;
+      margin: 20px auto;
+      box-shadow: 0 0 25px rgba(34,197,94,0.4);
+    }
+  </style>
+</head>
+<body>
+
+<h1>🐍 El Juego de la Serpiente 🐍</h1>
+<p>de Raquel</p>
+
+<canvas id="game" width="400" height="400"></canvas>
+
+<script>
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const size = 20;
+  const tiles = canvas.width / size;
+
+  let snake = [{ x: 10, y: 10 }];
+  let food = randomFood();
+  let dx = 0, dy = 0;
+  let running = false;
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; running = true; }
+    if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; running = true; }
+    if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; running = true; }
+    if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; running = true; }
+  });
+
+  function randomFood() {
+    return {
+      x: Math.floor(Math.random() * tiles),
+      y: Math.floor(Math.random() * tiles)
+    };
+  }
+
+  function loop() {
+    if (!running) return draw();
+
+    const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+    if (
+      head.x < 0 || head.y < 0 ||
+      head.x >= tiles || head.y >= tiles ||
+      snake.some(s => s.x === head.x && s.y === head.y)
+    ) {
+      alert("¡Oh, chocaste! Juego terminado 😔");
+      running = false;
+      return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) food = randomFood();
+    else snake.pop();
+
+    draw();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // comida
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(food.x * size + size / 2, food.y * size + size / 2, size / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // serpiente
+    ctx.fillStyle = "#22c55e";
+    snake.forEach(s => ctx.fillRect(s.x * size, s.y * size, size, size));
+
+    // ====== OJOS + PARPADEO ======
+    const head = snake[0];
+    const blink = Math.sin(Date.now() / 400) > 0.95; // parpadeo
+
+    if (!blink) {
+      ctx.fillStyle = "white";
+      let o1 = { x: 6, y: 6 }, o2 = { x: 12, y: 6 };
+
+      if (dx === 1) { o1 = { x: 12, y: 6 }; o2 = { x: 12, y: 12 }; }
+      if (dx === -1) { o1 = { x: 6, y: 6 }; o2 = { x: 6, y: 12 }; }
+      if (dy === 1) { o1 = { x: 6, y: 12 }; o2 = { x: 12, y: 12 }; }
+      if (dy === -1) { o1 = { x: 6, y: 6 }; o2 = { x: 12, y: 6 }; }
+
+      ctx.beginPath();
+      ctx.arc(head.x * size + o1.x, head.y * size + o1.y, 2.5, 0, Math.PI * 2);
+      ctx.arc(head.x * size + o2.x, head.y * size + o2.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "black";
+      ctx.beginPath();
+      ctx.arc(head.x * size + o1.x + dx, head.y * size + o1.y + dy, 1, 0, Math.PI * 2);
+      ctx.arc(head.x * size + o2.x + dx, head.y * size + o2.y + dy, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ====== LENGUA ======
+    //if (running && Math.sin(Date.now() / 200) > 0.7) {
+      //ctx.strokeStyle = "#f43f5e";
+      //ctx.lineWidth = 2;
+      //ctx.beginPath();
+      //ctx.moveTo(
+        //head.x * size + size / 2,
+        //head.y * size + size / 2
+      //);
+      //ctx.lineTo(
+        //head.x * size + size / 2 + dx * 10,
+        //head.y * size + size / 2 + dy * 10
+      //);
+      //ctx.stroke();
+    //}
+  }
+
+  setInterval(loop, 150);
+  draw();
+</script>
+
+</body>
+</html>
